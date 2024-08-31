@@ -12,8 +12,9 @@ This project is a simple RISC-V assembler implemented in C++. The assembler tran
 ## Structure
 
 - **Register Class**: Converts register names (e.g., `x1`) into their corresponding binary representation.
+- **Immediate Class**: Converts immediate integre values (e.g., `10`) into their corresponding binary representation.
 - **Instruction Classes**: Handles specific instruction formats with subclasses for different types (e.g., `RTypeInstruction`).
-- **Assembler Class**: Main class that integrates all components, processes input assembly lines, and outputs the corresponding machine code.
+- **InstructionConvert Class**: Main class that integrates all components, processes input assembly lines, and outputs the corresponding machine code.
 
 ## Getting Started
 
