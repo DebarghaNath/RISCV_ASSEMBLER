@@ -19,4 +19,4 @@ This project is a simple RISC-V assembler implemented in C++. The assembler tran
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/riscv-assembler.git
+   git clone https://github.com/DebarghaNath/RISCV_ASSEMBLER
