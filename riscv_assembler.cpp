@@ -72,6 +72,11 @@ public:
         }
         return ret;
     }
+    string immJ()
+    {
+        int num = stoi(imm);
+        return bitset<20>(num).to_string(); 
+    }
 };
 
 
@@ -251,6 +256,44 @@ public:
 
 };
 
+
+
+//------------------------------------------------CLASS FOR J-TYPE INSTRUCTION----------------------------------------------------------------------------
+class J_TypeInstruction
+{
+private:
+    string opcode;
+    string rd;
+    string r1;
+    string func3;
+    string imm;
+public:
+    J_TypeInstruction(const string &op,const string &d,const string &f3,const string & rs1,const string &i)
+    {
+        func3 = f3;
+        r1 = rs1;
+        opcode = op;
+        rd = d;
+        imm = i;
+    }
+    string J_TypeConvert()
+    {
+        Register rdReg(rd);
+        Immediate Im(imm);
+        string binaryInstruction = Im.immJ() + rdReg.toBinary() + opcode;
+        return binaryInstruction;
+    }
+    string JL_TypeConvert()
+    {
+        Register rdReg(rd);
+        Register r1Reg(r1);
+        Immediate Im(imm);
+        string binaryInstruction = Im.immToBinary()+r1Reg.toBinary() + func3 +rdReg.toBinary() + opcode;
+        return binaryInstruction;
+    }
+
+};
+
 //---------------------------------------------------------------CLASS FOR INSTRUCTION CONVERSION---------------------------------------------------------
 class InstructionConvert 
 {
@@ -287,7 +330,10 @@ private:
         {"SB", {"S", "000", ""}},
         {"SH", {"S", "001", ""}},
         {"SW", {"S", "010", ""}},
-        {"SD", {"S", "011", ""}}
+        {"SD", {"S", "011", ""}},
+        {"JAL", {"J", "", ""}},
+        {"JALR", {"JL", "000", ""}}
+
     };
 
     unordered_map<string, string> typeToOpcode = 
@@ -298,7 +344,9 @@ private:
         {"IR", "0010011"},
         {"L", "0000011"},
         {"B", "1100011"},
-        {"S", "0100011"}
+        {"S", "0100011"},
+        {"J", "1101111"},
+        {"JL", "1100111"}
     };
 
 
@@ -388,6 +436,25 @@ public:
             S_TypeInstruction S_Type(opcode,r2,r1,imm,func3);
             return S_Type.S_TypeConvert();
         }
+        else if(type=="J")
+        {
+            string rd,imm;
+            ss>>rd>>imm;
+            rd.pop_back();
+            opcode = typeToOpcode[type];
+            J_TypeInstruction J_Type(opcode,rd,func3,"",imm);
+            return J_Type.J_TypeConvert();
+        }
+        else if(type=="JL")
+        {
+            string rd,rs1,imm;
+            ss>>rd>>rs1>>imm;
+            rd.pop_back();
+            rs1.pop_back();
+            opcode = typeToOpcode[type];
+            J_TypeInstruction J_Type(opcode,rd,func3,rs1,imm);
+            return J_Type.JL_TypeConvert();
+        }
         return "Invalid Instruction Type";
     }
 };
@@ -426,7 +493,7 @@ public:
 
 //--------------------------------------------------------------------------MAIN--------------------------------------------------------------------------
 int main() {
-    string str = "ADD x1, x2, x3; ADDI x1, x2, 10; LB x1, 10[x2]; SRAI x1, x2, 5; BNE x1, x2, 5 ; SW x1, 100[x2];";
+    string str = "ADD x1, x2, x3; ADDI x1, x2, 10; LB x1, 10[x2]; SRAI x1, x2, 5; BNE x1, x2, 5 ; SW x1, 100[x2]; JAL x3, 12; JALR x2, x3, 122;";
     StringParser FinalStr(str);
     FinalStr.parse();
     return 0;
