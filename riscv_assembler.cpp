@@ -148,7 +148,9 @@ class typeInstruction
             Register r2Reg(rs2);
             Register r1Reg(rs1);
             Immediate Im(imm);
-            string BinaryInstruction = Im.immRet7() + r2Reg.toBinary()+ r1Reg.toBinary()+func3+Im.immRet5()+opcode;
+            string s1 = Im.immRet7();
+            string s2 = Im.immRet5();
+            string BinaryInstruction = s1[0]+s1.substr(2)+s2[0] + r2Reg.toBinary()+ r1Reg.toBinary()+func3+s2.substr(1)+s1[1]+opcode;
             return BinaryInstruction;
         }
         string S_TypeConvert()
@@ -163,7 +165,8 @@ class typeInstruction
         {
             Register rdReg(rd);
             Immediate Im(imm);
-            string BinaryInstruction = Im.immJ() + rdReg.toBinary()+opcode;
+            string s = Im.immJ();
+            string BinaryInstruction = s[0]+s.substr(10)+s[9]+s.substr(1,8)+ rdReg.toBinary()+opcode;
             return BinaryInstruction;
         }
         string JL_TypeConvert()
@@ -196,10 +199,10 @@ class InstructionConvert
         {"ADDI",{"I","000",""}},
         {"SLLI",{"IL","001","0000000"}},
         {"SLTI",{"IL","010","0000000"}},
-        {"SLLIU",{"IL","011","0000000"}},
+        {"SLTIU",{"IL","011","0000000"}},
         {"XORI",{"I","100",""}},
         {"SRLI",{"IR","101","0100000"}},
-        {"SRAI",{"IR","101","0100000"}},
+        {"SRAI",{"IR","101","0000000"}},
         {"ORI",{"I","110",""}},
         {"ANDI",{"I","111",""}},
         {"LB",{"L","000",""}},
@@ -255,8 +258,8 @@ class InstructionConvert
             rd.pop_back();
             r1.pop_back();
             opcode = typeToOpcode[type];
-            typeInstruction I_Type(opcode,r1,r2,rd,"",func3,func7);
-            return I_Type.I_TypeConvert();
+            typeInstruction R_Type(opcode,r1,r2,rd,"",func3,func7);
+            return R_Type.R_TypeConvert();
         }
         else if(type == "I")
         {
@@ -418,6 +421,7 @@ class StringParser
         }
     }
 };
+
 //--------------------------------------main---------------------------------
 int main()
 {
@@ -429,7 +433,7 @@ int main()
         use x[r1] for offset
           ADDI x1, x2, 10; SRLI x5, x3, 5; LBU x1, 10[x2]; BEQ x10, x2, 7; SW x7, 10[x3]; JAL x3, 12
     */
-    string str = "LB x1, 100[x12];SW x7, 1000[x31];LUI x3, 100;AUIPC x3, 100;";
+    string str = "BEQ x10, x2, 7;";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
     printf("GIVEN INUPT IN ASSEMBLY CODE IS: \n");
@@ -458,5 +462,4 @@ int main()
     printf("********************************************************** \n");
     return 0;
 }
-
 
