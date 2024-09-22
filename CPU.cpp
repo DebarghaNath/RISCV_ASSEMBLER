@@ -1,6 +1,6 @@
 /*
     Author: Debargha Nath
-    
+
 */
 #include <bits/stdc++.h>
 using namespace std;
@@ -198,6 +198,9 @@ class CPU
             {"L000", "LB"},
             {"L001", "LH"},
             {"L010", "LW"},
+            {"S000", "SB"},
+            {"S001", "SH"},
+            {"S010", "SW"},
         };
     public:
         CPU(const string &in) : instruction(in){} 
@@ -308,6 +311,33 @@ class CPU
                     Register[regd] = mem.load_halfword(immediate+Register[reg1]);
                 }
             }
+            else if(opcode=="S")
+            {
+                string func3,r1,rd,imm;
+                func3 = instruction.substr(n - 15, 3);
+                string operation = opcode + func3;
+                operation = Operation[operation];
+                r1 = instruction.substr(n - 20, 5);
+                imm = instruction.substr(0, 12);  
+                rd = instruction.substr(n - 12, 5);
+                operation.pop_back();
+                int immediate = sign_extend(imm, 12);  
+                int reg1 = stoi(r1, 0, 2);
+                int regd = stoi(rd, 0, 2);
+                cout << "Imm: " << immediate << " R1: " << reg1 << " Rd: " << regd << " Operation: " << operation << endl;
+                if(operation=="SB")
+                {
+                    mem.store_byte(immediate+Register[reg1],Register[regd]);
+                }
+                else if(operation=="SW")
+                {
+                    mem.store_word(immediate+Register[reg1],Register[regd]);
+                }
+                else if(operation=="SH")
+                {
+                    mem.store_halfword(immediate+Register[reg1],Register[regd]);
+                }
+            }
 
         }
 };  
@@ -331,4 +361,5 @@ int main()
    cp2.convert();
    
 }
+
 
