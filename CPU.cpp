@@ -1,3 +1,7 @@
+/*
+    Author: Debargha Nath
+    
+*/
 #include <bits/stdc++.h>
 using namespace std;
 
@@ -11,8 +15,74 @@ unordered_map<int, int> Register =
             {25, 0}, {26, 0}, {27, 0}, {28, 0}, {29, 0}, {30, 0},
             {31, 0},
         };
+//-----------------------------------------------------MEMORY--------------------------------------------------------
 
-//---------------------------------------------------------ALU------------------------------------
+class Memory
+{
+private:
+    vector<int8_t> memory;
+public:
+    Memory(size_t size) : memory(size) {}
+
+    int8_t load_byte(uint32_t address)
+    {
+        if (address >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        return static_cast<int8_t>(memory[address]); 
+    }
+
+    int16_t load_halfword(uint32_t address)
+    {
+        if (address + 1 >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        return static_cast<int16_t>(memory[address] | (memory[address + 1] << 8));
+    }
+
+    int32_t load_word(uint32_t address)
+    {
+        if (address + 3 >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        return static_cast<int32_t>(memory[address] | 
+               (memory[address + 1] << 8) | 
+               (memory[address + 2] << 16) | 
+               (memory[address + 3] << 24));
+    }
+
+    void store_byte(uint32_t address, int8_t value) 
+    {
+        if (address >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        memory[address] = static_cast<uint8_t>(value);
+    }
+
+    void store_halfword(uint32_t address, int16_t value) 
+    {
+        if (address + 1 >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        memory[address] = static_cast<uint8_t>(value & 0xFF);
+        memory[address + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
+    }
+
+    void store_word(uint32_t address, int32_t value) 
+    {
+        if (address + 3 >= memory.size()) {
+            throw out_of_range("Memory access out of range");
+        }
+        memory[address] = static_cast<uint8_t>(value & 0xFF);
+        memory[address + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
+        memory[address + 2] = static_cast<uint8_t>((value >> 16) & 0xFF);
+        memory[address + 3] = static_cast<uint8_t>((value >> 24) & 0xFF);
+    }
+};
+
+Memory mem(1024);
+
+//---------------------------------------------------------ALU------------------------------------------------------
 class ALU
 {
     private:
@@ -81,7 +151,7 @@ class ALU
         }
 };
 
-//---------------------------------------------------------Helper Function: Sign Extend----------------------
+//-----------------------------------------------------------NEGATIVE NUMBERS-------------------------------------------------------------
 int sign_extend(const string &binary, int bits)
 {
     int value = stoi(binary, 0, 2);
@@ -92,7 +162,7 @@ int sign_extend(const string &binary, int bits)
     return value;
 }
 
-//---------------------------------------------------------CPU----------------------
+//-----------------------------------------------------------CPU-------------------------------------------------------------------------
 class CPU 
 {
     private:
@@ -124,12 +194,13 @@ class CPU
             {"I0100000000", "SLTI"},
             {"I0110000000", "SLTIU"},
             {"I1010100000", "SRLI"},
-            {"I1010000000","SRAI"}
+            {"I1010000000","SRAI"},
+            {"L000", "LB"},
+            {"L001", "LH"},
+            {"L010", "LW"},
         };
-        vector<int8_t> memory;
-
     public:
-        CPU(const string &in) : instruction(in), memory(1024, 0) {} 
+        CPU(const string &in) : instruction(in){} 
 
         void convert() 
         { 
@@ -210,11 +281,38 @@ class CPU
                     cout << "Result: " << Register[regd] << endl;
                 }
             }
+            else if(opcode=="L")
+            {
+                string func3,r1,rd,imm;
+                func3 = instruction.substr(n - 15, 3);
+                string operation = opcode + func3;
+                operation = Operation[operation];
+                r1 = instruction.substr(n - 20, 5);
+                imm = instruction.substr(0, 12);  
+                rd = instruction.substr(n - 12, 5);
+                operation.pop_back();
+                int immediate = sign_extend(imm, 12);  
+                int reg1 = stoi(r1, 0, 2);
+                int regd = stoi(rd, 0, 2);
+                cout << "Imm: " << immediate << " R1: " << reg1 << " Rd: " << regd << " Operation: " << operation << endl;
+                if(operation=="LB")
+                {
+                    Register[regd] = mem.load_byte(immediate+Register[reg1]);
+                }
+                else if(operation=="LW")
+                {
+                    Register[regd] = mem.load_word(immediate+Register[reg1]);
+                }
+                else if(operation=="LH")
+                {
+                    Register[regd] = mem.load_halfword(immediate+Register[reg1]);
+                }
+            }
 
         }
 };  
 
-//---------------------------------------------------------Main----------------------
+//---------------------------------------------------------Main--------------------------------------------------------------------------
 int main()
 {
     /*
@@ -233,3 +331,4 @@ int main()
    cp2.convert();
    
 }
+
