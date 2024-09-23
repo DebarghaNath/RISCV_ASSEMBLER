@@ -410,7 +410,7 @@ class StringParser
             if(TempString[i]==';')
             {
                 InstructionConvert converter;
-                //cout<<st<<endl;
+                cout<<st<<endl;
                 cout<<converter.convert(st)<<endl;
                 st = "";
             }
@@ -433,7 +433,10 @@ int main()
         use x[r1] for offset
           ADDI x1, x2, 10; SRLI x5, x3, 5; LBU x1, 10[x2]; BEQ x10, x2, 7; SW x7, 10[x3]; JAL x3, 12
     */
-    string str = "BEQ x10, x2, 7;";
+    string str = R"(
+                    BEQ x10, x2, 7;
+                    ADDI x1, x2, 3;
+                )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
     printf("GIVEN INUPT IN ASSEMBLY CODE IS: \n");
@@ -462,4 +465,3 @@ int main()
     printf("********************************************************** \n");
     return 0;
 }
-
