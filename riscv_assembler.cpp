@@ -1,5 +1,5 @@
 /*
-    Authon: Debargha Nath
+    Author: Debargha Nath
 */
 #include <bits/stdc++.h>
 using namespace std;
@@ -213,7 +213,7 @@ class InstructionConvert
         {"BEQ",{"B","000",""}},
         {"BNE",{"B","001",""}},
         {"BLT",{"B","100",""}},
-        {"BEQ",{"B","101",""}},
+        {"BGE",{"B","101",""}},
         {"SB",{"S","000",""}},
         {"SH",{"S","001",""}},
         {"SW",{"S","010",""}},
@@ -434,8 +434,10 @@ int main()
           ADDI x1, x2, 10; SRLI x5, x3, 5; LBU x1, 10[x2]; BEQ x10, x2, 7; SW x7, 10[x3]; JAL x3, 12
     */
     string str = R"(
-                    BEQ x10, x2, 7;
-                    ADDI x1, x2, 3;
+                        ADDI x1, x0, 4;      
+                        BEQ x1, x0, 12;      
+                        ADDI x1, x1, -1;     
+                        JAL x0, -8;                        
                 )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
