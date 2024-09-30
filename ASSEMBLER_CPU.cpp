@@ -194,7 +194,7 @@ class InstructionConvert
         {"XOR",{"R","100","0000000"}},
         {"SLL",{"R","001","0000000"}},
         {"SRL",{"R","101","0100000"}},
-        {"STL",{"R","010","0000000"}},
+        {"SLT",{"R","010","0000000"}},
         {"SLTU",{"R","011","0000000"}},
         {"MUL",{"R","000","0000001"}},
         {"ADDI",{"I","000",""}},
@@ -238,7 +238,7 @@ class InstructionConvert
         {"J","1101111"},
         {"JL","1100111"},
         {"U","0110111"},
-        {"UI","0110111"}
+        {"UI","0010111"}
     };
     public:
     string convert( const string & str)
@@ -439,27 +439,27 @@ unordered_map<int, int> GPR =
 class Memory
 {
 private:
-    vector<int8_t> memory;
+    vector<int> memory;
 public:
     Memory(size_t size) : memory(size) {}
 
-    int8_t load_byte(uint32_t address)
+    int8_t load_byte(int32_t address)
     {
         if (address >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
-        return static_cast<int8_t>(memory[address]); 
+        return (memory[address]); 
     }
 
-    int16_t load_halfword(uint32_t address)
+    int16_t load_halfword(int32_t address)
     {
         if (address + 1 >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
-        return static_cast<int16_t>(memory[address] | (memory[address + 1] << 8));
+        return (memory[address] | (memory[address + 1] << 8));
     }
 
-    int32_t load_word(uint32_t address)
+    int32_t load_word(int32_t address)
     {
         if (address + 3 >= memory.size()) {
             throw out_of_range("Memory access out of range");
@@ -470,32 +470,32 @@ public:
                (memory[address + 3] << 24));
     }
 
-    void store_byte(uint32_t address, int8_t value) 
+    void store_byte(int32_t address, int8_t value) 
     {
         if (address >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
-        memory[address] = static_cast<uint8_t>(value);
+        memory[address] = (value);
     }
 
-    void store_halfword(uint32_t address, int16_t value) 
+    void store_halfword(int32_t address, int16_t value) 
     {
         if (address + 1 >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
-        memory[address] = static_cast<uint8_t>(value & 0xFF);
-        memory[address + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
+        memory[address] = (value & 0xFF);
+        memory[address + 1] = ((value >> 8) & 0xFF);
     }
 
-    void store_word(uint32_t address, int32_t value) 
+    void store_word(int32_t address, int32_t value) 
     {
         if (address + 3 >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
-        memory[address] = static_cast<uint8_t>(value & 0xFF);
-        memory[address + 1] = static_cast<uint8_t>((value >> 8) & 0xFF);
-        memory[address + 2] = static_cast<uint8_t>((value >> 16) & 0xFF);
-        memory[address + 3] = static_cast<uint8_t>((value >> 24) & 0xFF);
+        memory[address] = (value & 0xFF);
+        memory[address + 1] = ((value >> 8) & 0xFF);
+        memory[address + 2] = ((value >> 16) & 0xFF);
+        memory[address + 3] = ((value >> 24) & 0xFF);
     }
 };
 
@@ -637,13 +637,16 @@ class ALU
 //-----------------------------------------------------------NEGATIVE NUMBERS-------------------------------------------------------------
 int sign_extend(const string &binary, int bits)
 {
-    int value = stoi(binary, 0, 2);
-    if (binary[0] == '1')
+    int value = stoi(binary, 0, 2); 
+    
+    if (value & (1 << (bits - 1)))  
     {
-        value -= (1 << bits);
+        value -= (1 << bits); 
     }
+    
     return value;
 }
+
 //-----------------------------------------------------------CPU-------------------------------------------------------------------------
 class CPU 
 {
@@ -654,7 +657,7 @@ class CPU
         {
             {"0110011", "R"}, {"0010011", "I"}, {"0000011", "L"}, {"1100011", "B"},
             {"0100011", "S"}, {"1101111", "J"}, {"0110111", "U"},
-            {"0010111", "UI"}
+            {"0010111", "UI"},{"1100111","JL"}
         };
 
         unordered_map<string, string> Operation = {
@@ -665,7 +668,7 @@ class CPU
             {"R1000000000", "XOR"},
             {"R0010000000", "SLL"},
             {"R1010100000", "SRL"},
-            {"R0100000000", "STL"},
+            {"R0100000000", "SLT"},
             {"R0110000000", "SLTU"},
             {"R0000000001", "MUL"},
             {"I000", "ADDI"},
@@ -690,6 +693,9 @@ class CPU
             {"B100", "BLT"},
             {"B101", "BGE"},
             {"J","JAL"},
+            {"JL","JALR"},
+            {"U", "LUI"},
+            {"UI", "AUIPC"}
         };
     public:
         CPU(const string &in) : instruction(in){} 
@@ -820,12 +826,12 @@ class CPU
                 cout << "Imm: " << immediate << " R1: " << reg1 << " Rd: " << regd << " Operation: " << operation << endl;
                 if(operation=="SB")
                 {
-                    //cout<<immediate+GPR[reg1]<<endl;
+                    cout<<immediate+GPR[reg1]<<endl;
                     mem.store_byte(immediate+GPR[reg1],GPR[regd]);
                 }
                 else if(operation=="SW")
                 {
-                    //cout<<immediate+GPR[reg1]<<endl;
+                    cout<<immediate+GPR[reg1]<<endl;
                     mem.store_word(immediate+GPR[reg1],GPR[regd]);
                 }
                 else if(operation=="SH")
@@ -842,7 +848,21 @@ class CPU
                 int regd = stoi(rd, 0, 2);
                 int Immediate = sign_extend(imm,20);
                 cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
-                PC+=Immediate;
+                PC+=Immediate-4;
+                GPR[regd] = PC;
+            }
+            else if(opcode=="JL")
+            {
+                string rd, imm, rs1;
+                string operation = Operation[opcode];
+                rd = instruction.substr(n - 12, 5);
+                rs1 = instruction.substr(n-20,5);
+                imm = instruction.substr(0,12);
+                int regd = stoi(rd, 0, 2);
+                int reg1 = stoi(rs1, 0, 2);
+                int Immediate = sign_extend(imm,12);
+                cout << "Imm: " << Immediate << " Rd: " << regd <<" R1: "<< reg1 << " Operation: " << operation << endl;
+                PC+=Immediate+GPR[reg1]-4;
                 GPR[regd] = PC;
             }
             else if(opcode=="B")
@@ -864,8 +884,32 @@ class CPU
                 int val = alu.execute();
                 if(val==1)
                 {
-                    PC+=Immediate;
+                    PC+=Immediate-4;
                 }
+            }
+            else if(opcode=="U")
+            {
+                string rd, imm;
+                string operation = Operation[opcode];
+                rd = instruction.substr(n - 12, 5);
+                imm = instruction.substr(0,20);
+                int regd = stoi(rd, 0, 2);
+                int Immediate = sign_extend(imm,20);
+                GPR[regd] = (Immediate<<12);
+                cout << "Imm: " << (Immediate<<12) << " Rd: " << regd << " Operation: " << operation << endl;              
+            }
+            else if(opcode=="UI")
+            {
+                string rd, imm;
+                string operation = Operation[opcode];
+                rd = instruction.substr(n - 12, 5);
+                imm = instruction.substr(0,20);
+                int regd = stoi(rd, 0, 2);
+                int Immediate = sign_extend(imm,20);
+                Immediate = (Immediate<<12);
+                cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
+                PC+=Immediate-4;
+                GPR[regd] = PC;
             }
             else 
             {
@@ -930,12 +974,13 @@ int main()
 
     /*
         please enter semicolon ';' for end of line it would signal end of line
-        
+        ADDI x1, x1, 5;  |ADDI x1, x0, 1;|ADDI x1, x1, 10;|ADDI x1, x0, 3;|ADDI x1, x1, 8;
+        BEQ x1, x0, 12;  |ADDI x2, x0, 5;|SRLI x1, x1, 1; |ADDI x2, x0, 4;|SB x1, 10[x0];
+        ADDI x1, x1, -1; |SUB x3, x1, x2;|                |SLT x3, x2, x1;|LB x2, 10[x0];
+        JAL x0, -8;      |                                                |ADDI x2, x2, 0;              
     */
     string str = R"(
-        ADDI x1, x1, 1;
-        SLLI x1, x1, 5;        
-        
+            
         )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
@@ -968,6 +1013,9 @@ int main()
     
     return 0;
 }
+
+
+
 
 
 
