@@ -443,59 +443,19 @@ private:
 public:
     Memory(size_t size) : memory(size) {}
 
-    int8_t load_byte(int32_t address)
+    int load(int address)
     {
         if (address >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
         return (memory[address]); 
     }
-
-    int16_t load_halfword(int32_t address)
-    {
-        if (address + 1 >= memory.size()) {
-            throw out_of_range("Memory access out of range");
-        }
-        return (memory[address] | (memory[address + 1] << 8));
-    }
-
-    int32_t load_word(int32_t address)
-    {
-        if (address + 3 >= memory.size()) {
-            throw out_of_range("Memory access out of range");
-        }
-        return static_cast<int32_t>(memory[address] | 
-               (memory[address + 1] << 8) | 
-               (memory[address + 2] << 16) | 
-               (memory[address + 3] << 24));
-    }
-
-    void store_byte(int32_t address, int8_t value) 
+    void store(int address, int value) 
     {
         if (address >= memory.size()) {
             throw out_of_range("Memory access out of range");
         }
         memory[address] = (value);
-    }
-
-    void store_halfword(int32_t address, int16_t value) 
-    {
-        if (address + 1 >= memory.size()) {
-            throw out_of_range("Memory access out of range");
-        }
-        memory[address] = (value & 0xFF);
-        memory[address + 1] = ((value >> 8) & 0xFF);
-    }
-
-    void store_word(int32_t address, int32_t value) 
-    {
-        if (address + 3 >= memory.size()) {
-            throw out_of_range("Memory access out of range");
-        }
-        memory[address] = (value & 0xFF);
-        memory[address + 1] = ((value >> 8) & 0xFF);
-        memory[address + 2] = ((value >> 16) & 0xFF);
-        memory[address + 3] = ((value >> 24) & 0xFF);
     }
 };
 
@@ -655,43 +615,51 @@ unordered_map<string, string> OpcodeToType =
     {"0010111", "UI"},{"1100111","JL"}
 };
 
+// ALUOP|ALUSRC|JUMP|BRANCH|MEMRead|MEMwrite|RegWrite|MEM2Reg
+    
+unordered_map<string, string> CWgenerator = 
+{
+    {"0110011", "00000000010"}, {"0010011", "00011000010"}, {"0000011", "00101001011"}, {"1100011", "0011001000x"},
+    {"0100011", "0010100010x"}, {"1101111", "0101110000x"}, {"0110111", "0110100001x"},
+    {"0010111", "0111100001x"},{"1100111","1000110000x"}
+};
 unordered_map<string, string> Operation = 
 {
-    {"R0000000000", "ADD"},
-    {"R0000100000", "SUB"},
-    {"R1110000000", "AND"},
-    {"R1100000000", "OR"},
-    {"R1000000000", "XOR"},
-    {"R0010000000", "SLL"},
-    {"R1010100000", "SRL"},
-    {"R0100000000", "SLT"},
-    {"R0110000000", "SLTU"},
-    {"R0000000001", "MUL"},
-    {"I000", "ADDI"},
-    {"I100", "XORI"},
-    {"I110", "ORI"},
-    {"I111", "ANDI"},
-    {"I0010000000", "SLLI"},
-    {"I0100000000", "SLTI"},
-    {"I0110000000", "SLTIU"},
-    {"I1010100000", "SRLI"},
-    {"I1010000000","SRAI"},
-    {"L000", "LB"},
-    {"L001", "LH"},
-    {"L010", "LW"},
-    {"S000", "SB"},
-    {"S001", "SH"},
-    {"S010", "SW"},
-    {"B000", "BEQ"},
-    {"B010", "BLE"},
-    {"B011", "BGT"},
-    {"B001", "BNE"},
-    {"B100", "BLT"},
-    {"B101", "BGE"},
-    {"J","JAL"},
-    {"JL","JALR"},
-    {"U", "LUI"},
-    {"UI", "AUIPC"}
+    {"00000000000000", "ADD"},
+    {"00000000100000", "SUB"},
+    {"00001110000000", "AND"},
+    {"00001100000000", "OR"},
+    {"00001000000000", "XOR"},
+    {"00000010000000", "SLL"},
+    {"00001010100000", "SRL"},
+    {"00000100000000", "SLT"},
+    {"00000110000000", "SLTU"},
+    {"00000000000001", "MUL"},
+    {"0001000", "ADD"},
+    {"0001100", "XOR"},
+    {"0001110", "OR"},
+    {"0001111", "AND"},
+    {"00010010000000", "SLL"},
+    {"00010100000000", "SLT"},
+    {"00010110000000", "SLTU"},
+    {"00011010100000", "SRL"},
+    {"00011010000000","SRA"},
+    {"0010000", "ADD"},
+    {"0010001", "ADD"},
+    {"0010010", "ADD"},
+    {"0010000", "ADD"},
+    {"0010001", "ADD"},
+    {"0010010", "ADD"},
+    {"0011000", "BEQ"},
+    {"0011010", "BLE"},
+    {"0011011", "BGT"},
+    {"0011001", "BNE"},
+    {"0011100", "BLT"},
+    {"0011101", "BGE"},
+    {"0101","JAL"},
+    {"1000","JALR"},
+    {"0110", "LUI"},
+    {"0111", "AUIPC"}
 };
 
 //------------------------------ClassForStringParsing---------------------------------
@@ -727,27 +695,51 @@ class StringParser
 class IFID {
     private:
         string instruction;
+        int npc;
+        int dpc;
     public:
-        void IM(const string & inst)
+        void setIM(const string & inst)
         {
             instruction = inst;
+        }
+        void setNPC(const int n)
+        {
+            npc = n;
+        }
+        void setDPC(const int d)
+        {
+            dpc = d;
+        }
+        int giveDPC()
+        {
+            return dpc;
+        }
+        int giveNPC()
+        {
+            return npc;
         }
         string getinstruction()
         {
             return instruction;
+        }
+        void print_content()
+        {
+            cout<<"INSTRUCTION: "<<instruction<<endl;
         }
 };
 class IDEX
 {
     private:
         string opcode;
+        string CW;
         int imm;
         int DPC;
+        int JPC;
         string func3;
         string func7;
-        int regd;
-        int reg1;
-        int reg2;
+        int regd = 0;
+        int reg1 = 0;
+        int reg2 =0;
     public:
     void setopcode(const string & op)
     {
@@ -771,23 +763,282 @@ class IDEX
     }
     void setreg2(const int r2)
     {
-        regd = r2;
+        reg2 = r2;
     }
     void setImmediate(int i)
     {
         imm = i;
     }
+    void setDPC(int d)
+    {
+        DPC = d;
+    }
+    void setJPC(int j)
+    {
+        JPC = j;
+    }
+    void calcCW()
+    {
+        CW = CWgenerator[opcode];
+    }
+
+    string giveopcode()
+    {
+        return opcode;
+    }
+    string givefunc3()
+    {
+        return func3;
+    }
+    string givefunc7()
+    {
+        return func7;
+    }
+    int giveregd()
+    {
+        return regd;
+    }
+    int givereg1()
+    {
+        return reg1;
+    }
+    int givereg2()
+    {
+        return reg2;
+    }
+    int giveImmediate()
+    {
+        return imm;
+    }
+    int giveDPC()
+    {
+        return DPC;
+    }
+    int giveJPC()
+    {
+        return JPC;
+    }
+    string giveCW()
+    {
+        return CW;
+    }
+    void print_content()
+    {
+        cout<<"OPCODE: "<<opcode<<endl;
+        cout<<"FUNC3: "<<func3<<endl;
+        cout<<"FUNC7: "<<func7<<endl;
+        cout<<"REG1: "<<reg1<<endl;
+        cout<<"REG2: "<<reg2<<endl;
+        cout<<"REGd: "<<regd<<endl;
+        cout<<"Immediate: "<<imm<<endl;
+        cout<<"DPC: "<<DPC<<endl;
+        cout<<"CW: "<<CW<<endl;
+        cout<<"JPC: "<<JPC<<endl;
+    }
 };
 class EXMO
 {
     private:
-
+        int ALUOPT;
+        string CW;
+        int reg2;
+        int regd;
     public:
+        void setALUOPT(int val)
+        {
+            ALUOPT = val;
+        }
+        void setCW(const string & cw)
+        {
+            CW = cw;
+        }
+        void setReg2(const int r2)
+        {
+            reg2 = r2;
+        }
+        void setRegd(const int rd)
+        {
+            regd = rd;
+        }
+        int giveALUOPT()
+        {
+            return ALUOPT;
+        }
+        string giveCW()
+        {
+            return CW;
+        }
+        int setReg2()
+        {
+            return reg2;
+        }
+        int setRegd()
+        {
+            return regd;
+        }
 };
+string ALUgenerate(string  ALUop,string  func3,string  func7)
+{
+    return Operation[ALUop+func3+func7];
+}
+int ALU(string & operation,int operand1,int operand2)
+{
+        if (operation == "ADD")
+        {
+            return operand1 + operand2;
+        }
+        else if (operation == "SUB")
+        {
+            return operand1 - operand2;
+        }
+        else if (operation == "AND")
+        {
+            return operand1 & operand2;
+        }
+        else if (operation == "MUL")
+        {
+            return operand1 * operand2;
+        }
+        else if (operation == "XOR")
+        {
+            return operand1 ^ operand2;
+        }
+        else if (operation == "OR")
+        {
+            return operand1 | operand2;
+        }
+        else if (operation == "SLL")
+        {
+            return operand1 << operand2;
+        }
+        else if (operation == "SRL")
+        {
+            return (unsigned int)operand1 >> operand2;
+        }
+        else if (operation == "SRA")
+        {
+            return operand1 >> operand2;
+        }
+        else if (operation == "SLT")
+        {
+            return operand1 < operand2 ? 1 : 0;
+        }
+        else if (operation == "SLTU")
+        {
+            return (unsigned int)operand1 < (unsigned int)operand2 ? 1 : 0;
+        }
+        else if (operation == "BEQ")
+        {
+            if(operand1==operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (operation == "BNE")
+        {
+            if(operand1!=operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (operation == "BLT")
+        {
+            if(operand1<operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (operation == "BGE")
+        {
+            if(operand1>=operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (operation == "BLE")
+        {
+            if(operand1<=operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (operation == "BGT")
+        {
+            if(operand1>operand2)
+            {
+                return 1;
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            cout << "Unknown operation: " << operation << endl;
+            return 0;
+        }
+}
 class MOWB
 {   
     private:
+        string CW;
+        int LDOUT;
+        int ALUOUT;
+        int Regd;
     public:
+        void setCW(const string & cw)
+        {
+            CW = cw;
+        }
+        void setLDOUT(int val)
+        {
+            LDOUT = val;
+        }
+        void setALUOUT(int val)
+        {
+            ALUOUT = val;
+        }
+        void setRegd(int val)
+        {
+            Regd = val;
+        }
+        string giveCW()
+        {
+            return CW;
+        }
+        int giveLDOUT()
+        {
+            return LDOUT;
+        }
+        int giveALUOUT()
+        {
+            return ALUOUT;
+        }
+        int giveregd()
+        {
+            return Regd;
+        }
 };
 IFID ifid;
 IDEX idex;
@@ -797,7 +1048,9 @@ MOWB mowb;
 void FETCH()
 {
     string res = instrMem.load_word(PC);
-    ifid.IM(res);
+    ifid.setIM(res);
+    ifid.setNPC(PC+4);
+    ifid.setDPC(PC);
     cout<<"RES=>"<<res<<endl;
     if(res=="$")
     {
@@ -810,12 +1063,13 @@ void DECODE()
     string str = ifid.getinstruction();
     int n = str.size();
     string opcode = str.substr(n-7, 7); 
+    string prevopcode = opcode;
     opcode = OpcodeToType[opcode];
         if (opcode == "R")
         {
             string func7, func3, r1, r2, rd;
             string operation = opcode + func3 + func7;
-            operation = Operation[operation];
+            //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
             r2 = str.substr(n - 25, 5);
             rd = str.substr(n - 12, 5);
@@ -823,12 +1077,14 @@ void DECODE()
             int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
             //---decode--
-            idex.setopcode(operation);
+            idex.setopcode(prevopcode);
             idex.setfunc7(str.substr(0, 7));
             idex.setfunc3(str.substr(n - 15, 3));
             idex.setreg1(reg1);
             idex.setreg2(reg2);
             idex.setregd(regd);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
         }
         
         else if (opcode == "I")
@@ -838,7 +1094,7 @@ void DECODE()
             if (func7 == "0000000" && (str.substr(n-15, 3) == "001"||str.substr(n-15,3)=="010"||str.substr(n-15,3)=="011"||str.substr(n-15,3)=="101"))
             {   func3 = str.substr(n - 15, 3);
                 string operation = opcode + func3+func7;
-                operation = Operation[operation];
+                //operation = Operation[operation];
                 r1 = str.substr(n - 20, 5); 
                 imm = str.substr(7, 5);     
                 rd = str.substr(n - 12, 5); 
@@ -846,19 +1102,21 @@ void DECODE()
                 int reg1 = stoi(r1, 0, 2);   
                 int regd = stoi(rd, 0, 2);
                 //---decode---  
-                idex.setopcode(operation);
+                idex.setopcode(prevopcode);
                 idex.setfunc3(func3);
                 idex.setfunc7(func7);
                 idex.setreg1(reg1);  
                 idex.setregd(regd);
                 idex.setImmediate(shamt);
+                idex.setDPC(ifid.giveDPC());
+                idex.calcCW();
             }
             else
             {
                 
                 func3 = str.substr(n - 15, 3);
                 string operation = opcode + func3;
-                operation = Operation[operation];
+                //operation = Operation[operation];
                 r1 = str.substr(n - 20, 5);
                 imm = str.substr(0, 12);  
                 rd = str.substr(n - 12, 5);
@@ -867,11 +1125,13 @@ void DECODE()
                 int reg1 = stoi(r1, 0, 2);
                 int regd = stoi(rd, 0, 2);
                 //---decode---
-                idex.setopcode(operation);
+                idex.setopcode(prevopcode);
                 idex.setfunc3(func3);
                 idex.setreg1(reg1);
                 idex.setregd(regd);
                 idex.setImmediate(immediate);
+                idex.setDPC(ifid.giveDPC());
+                idex.calcCW();
             }
         }
         else if(opcode=="L")
@@ -879,7 +1139,7 @@ void DECODE()
             string func3,r1,rd,imm;
             func3 = str.substr(n - 15, 3);
             string operation = opcode + func3;
-            operation = Operation[operation];
+            //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
             imm = str.substr(0, 12);  
             rd = str.substr(n - 12, 5);
@@ -888,11 +1148,13 @@ void DECODE()
             int reg1 = stoi(r1, 0, 2);
             int regd = stoi(rd, 0, 2);
             //----decode----
+            idex.setopcode(prevopcode);
             idex.setfunc3(func3);
-            idex.setopcode(operation);
             idex.setImmediate(immediate);
             idex.setreg1(reg1);
             idex.setregd(regd);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
         }
         else if(opcode=="S")
         {
@@ -900,7 +1162,7 @@ void DECODE()
             func3 = str.substr(n - 15, 3);
             string operation = opcode + func3;
             //cout<<operation<<endl;
-            operation = Operation[operation];
+            //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
             imm7 = str.substr(0, 7);  
             imm5 = str.substr(n-12,5);
@@ -910,45 +1172,67 @@ void DECODE()
             int immediate = sign_extend(imm, 12);  
             int reg1 = stoi(r1, 0, 2);
             int regd = stoi(rd, 0, 2);
-            //-----decode---
+            //-----decode-----
+            idex.setopcode(prevopcode);
             idex.setfunc3(func3);
-            idex.setopcode(opcode);
             idex.setreg1(reg1);
             idex.setregd(regd);
             idex.setImmediate(immediate);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
         }
         else if(opcode=="J")
         {
             string rd, imm;
-            string operation = Operation[opcode];
+            //string operation = Operation[opcode];
             rd = str.substr(n - 12, 5);
             imm = str.substr(0,20);
             int regd = stoi(rd, 0, 2);
             int Immediate = sign_extend(imm,20);
-            cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
-            PC+=Immediate-4;
-            GPR[regd] = PC;
+           //----decode----
+            idex.setopcode(prevopcode);
+            idex.setImmediate(Immediate);
+            idex.setregd(regd);
+            idex.setDPC(ifid.giveDPC());
+            idex.setJPC(ifid.giveNPC()+Immediate-4);
+            idex.calcCW();
+            GPR[regd]= ifid.giveNPC()+Immediate-4;
+
+            /*
+                PC+=Immediate-4;
+                GPR[regd] = PC;
+            */
         }
         else if(opcode=="JL")
         {
             string rd, imm, rs1;
-            string operation = Operation[opcode];
+            //string operation = Operation[opcode];
             rd = str.substr(n - 12, 5);
             rs1 = str.substr(n-20,5);
             imm = str.substr(0,12);
             int regd = stoi(rd, 0, 2);
             int reg1 = stoi(rs1, 0, 2);
             int Immediate = sign_extend(imm,12);
-            cout << "Imm: " << Immediate << " Rd: " << regd <<" R1: "<< reg1 << " Operation: " << operation << endl;
-            PC+=Immediate+GPR[reg1]-4;
-            GPR[regd] = PC;
+            //-----decode------
+            idex.setopcode(prevopcode);
+            idex.setregd(regd);
+            idex.setreg1(reg1);
+            idex.setImmediate(Immediate);
+            idex.setDPC(ifid.giveDPC());
+            idex.setJPC(ifid.giveNPC()+Immediate+GPR[reg1]-4);
+            idex.calcCW();
+            GPR[regd] = ifid.giveNPC()+Immediate+GPR[reg1]-4;
+            /*
+                PC+=Immediate+GPR[reg1]-4;
+                GPR[regd] = PC;
+            */
         }
         else if(opcode=="B")
         {
             string func3,r1,r2,imm5,imm7,imm;
             func3 = str.substr(n - 15, 3);
             string operation = opcode + func3;
-            operation = Operation[operation];
+            //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
             r2 = str.substr(n - 25, 5);
             imm5 = str.substr(n - 12, 5);
@@ -957,6 +1241,15 @@ void DECODE()
             int reg1 = stoi(r1, 0, 2);
             int reg2 = stoi(r2, 0, 2);
             int Immediate = sign_extend(imm,12);
+            //----decode----
+            idex.setopcode(prevopcode);
+            idex.setfunc3(func3);
+            idex.setreg1(reg1);
+            idex.setreg2(reg2);
+            idex.setImmediate(Immediate);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
+            /*
             cout << "Imm: " << Immediate << " R1: " << reg1 << " R2: " << reg2 << " Operation: " << operation << endl;
             ALU alu(operation,GPR[reg1],GPR[reg2]);
             int val = alu.execute();
@@ -964,36 +1257,119 @@ void DECODE()
             {
                 PC+=Immediate-4;
             }
+            */
         }
         else if(opcode=="U")
         {
             string rd, imm;
-            string operation = Operation[opcode];
+            //string operation = Operation[opcode];
             rd = str.substr(n - 12, 5);
             imm = str.substr(0,20);
             int regd = stoi(rd, 0, 2);
             int Immediate = sign_extend(imm,20);
-            GPR[regd] = (Immediate<<12);
-            cout << "Imm: " << (Immediate<<12) << " Rd: " << regd << " Operation: " << operation << endl;              
+            //-----decode----
+            idex.setopcode(prevopcode);
+            idex.setregd(regd);
+            idex.setImmediate(Immediate);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
+            /*
+                GPR[regd] = (Immediate<<12);
+                cout << "Imm: " << (Immediate<<12) << " Rd: " << regd << " Operation: " << operation << endl;             
+            */
         }
         else if(opcode=="UI")
         {
             string rd, imm;
-            string operation = Operation[opcode];
+            //string operation = Operation[opcode];
             rd = str.substr(n - 12, 5);
             imm = str.substr(0,20);
             int regd = stoi(rd, 0, 2);
             int Immediate = sign_extend(imm,20);
             Immediate = (Immediate<<12);
-            cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
-            PC+=Immediate-4;
-            GPR[regd] = PC;
+            //-----decode-----
+            idex.setopcode(prevopcode);
+            idex.setregd(regd);
+            idex.setImmediate(Immediate);
+            idex.setDPC(ifid.giveDPC());
+            idex.calcCW();
+            /*
+                cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
+                PC+=Immediate-4;
+                GPR[regd] = PC;
+            */
         }
         else 
         {
             printf("INVALID OPCODE");
         }
 }
+void EXECUTE()
+{
+    string CW = idex.giveCW();
+    exmo.setCW(CW);
+    exmo.setReg2(idex.givereg2());
+    exmo.setRegd(idex.giveregd());
+    int reg1val = GPR[idex.givereg1()];
+    int reg2val = GPR[idex.givereg2()];
+    if(CW[4]=='1')
+    {
+        reg2val = idex.giveImmediate();
+    }
+    string ALUselect = ALUgenerate(CW.substr(0,4),idex.givefunc3(),idex.givefunc7());
+    cout<<"ALUselect: "<<ALUselect<<endl;
+    int ALUres = ALU(ALUselect,reg1val,reg2val);
+    int DPC = idex.giveDPC();
+    int FPC = DPC;
+    if(CW[5]=='1' && ALUres==1)
+    {
+        int BPC = DPC+idex.giveImmediate();
+        FPC = BPC;
+    }
+    if(CW[6]==1)
+    {
+        int JPC = idex.giveJPC();
+        FPC = JPC;
+    }
+    PC = FPC;
+    cout<<ALUres<<endl;
+    exmo.setALUOPT(ALUres);
+}
+void MEMOP()
+{
+    string CW = exmo.giveCW();
+    mowb.setCW(CW);
+    mowb.setRegd(exmo.setRegd());
+    mowb.setALUOUT(exmo.giveALUOPT());
+    char MemRead = CW[7];
+    char MemWrite = CW[8];
+    if(MemRead=='1')
+    {
+        mowb.setLDOUT(mem.load(exmo.giveALUOPT()));
+    }
+    else if(MemWrite=='1')
+    {
+        mem.store(exmo.giveALUOPT(),GPR[exmo.setReg2()]);
+    }
+}
+void WRITEBK()
+{
+    string CW = mowb.giveCW();
+    int val;
+    if(CW.back()=='1')
+    {
+        val = mowb.giveLDOUT();
+    }
+    else
+    {
+        val = mowb.giveALUOUT();
+    }
+    if(CW[9]=='1')
+    {
+        GPR[mowb.giveregd()] = val;
+    }
+}
+
 //--------------------------------------main---------------------------------
 int main()
 {
@@ -1007,7 +1383,7 @@ int main()
         JAL x0, -8;      |                                                |ADDI x2, x2, 0;              
     */
     string str = R"(
-            ADDI x1, x1, 5;
+                ADDI x1, x1, 100;
         )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
@@ -1030,15 +1406,17 @@ int main()
         }   
     }
     printf("********************************************************** \n");
-    printf("GENERATED BINARY CODE IS : \n");
-    printf("********************************************************** \n");
     FinalStr.parse();    
     printf("INSTRUCTION MEMORY\n");
     instrMem.print_memory();
-   
+    FETCH();
+    DECODE();
+    ifid.print_content();
+    idex.print_content();   
+    EXECUTE();
+    MEMOP();
+    WRITEBK();
     
     return 0;
 }
-
-
 
