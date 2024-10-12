@@ -412,7 +412,7 @@ public:
         int index = (address - baseAddress) / 4;
         if (index < 0 || index >= memory.size()) 
         {
-            return "$";
+            return "00000000000000000000000000000000";
         }
         return memory[index]; 
     }
@@ -420,6 +420,10 @@ public:
         for (int i = 0; i < memory.size(); ++i) {
             cout << "Address " << baseAddress + i * 4 << ": " << memory[i] << std::endl;
         }
+    }
+    int instsize()
+    {
+        return memory.size();
     }
 };
 InstructionMemory instrMem;
@@ -635,31 +639,31 @@ unordered_map<string, string> Operation =
     {"00000100000000", "SLT"},
     {"00000110000000", "SLTU"},
     {"00000000000001", "MUL"},
-    {"0001000", "ADD"},
-    {"0001100", "XOR"},
-    {"0001110", "OR"},
-    {"0001111", "AND"},
+    {"00010000000000", "ADD"},
+    {"00011000000000", "XOR"},
+    {"00011100000000", "OR"},
+    {"00011110000000", "AND"},
     {"00010010000000", "SLL"},
     {"00010100000000", "SLT"},
     {"00010110000000", "SLTU"},
     {"00011010100000", "SRL"},
     {"00011010000000","SRA"},
-    {"0010000", "ADD"},
-    {"0010001", "ADD"},
-    {"0010010", "ADD"},
-    {"0010000", "ADD"},
-    {"0010001", "ADD"},
-    {"0010010", "ADD"},
-    {"0011000", "BEQ"},
-    {"0011010", "BLE"},
-    {"0011011", "BGT"},
-    {"0011001", "BNE"},
-    {"0011100", "BLT"},
-    {"0011101", "BGE"},
-    {"0101","JAL"},
-    {"1000","JALR"},
-    {"0110", "LUI"},
-    {"0111", "AUIPC"}
+    {"00100000000000", "ADD"},
+    {"00100010000000", "ADD"},
+    {"00100100000000", "ADD"},
+    {"00100000000000", "ADD"},
+    {"00100010000000", "ADD"},
+    {"00100100000000", "ADD"},
+    {"00110000000000", "BEQ"},
+    {"00110100000000", "BLE"},
+    {"00110110000000", "BGT"},
+    {"00110010000000", "BNE"},
+    {"00111000000000", "BLT"},
+    {"00111010000000", "BGE"},
+    {"01010000000000","JAL"},
+    {"10000000000000","JALR"},
+    {"01100000000000", "LUI"},
+    {"01110000000000", "AUIPC"}
 };
 
 //------------------------------ClassForStringParsing---------------------------------
@@ -694,9 +698,9 @@ class StringParser
 };
 class IFID {
     private:
-        string instruction;
-        int npc;
-        int dpc;
+        string instruction = "00000000000000000000000000000000";
+        int npc = 0;
+        int dpc = 0;
     public:
         void setIM(const string & inst)
         {
@@ -730,13 +734,17 @@ class IFID {
 class IDEX
 {
     private:
-        string opcode;
-        string CW;
-        int imm;
-        int DPC;
-        int JPC;
-        string func3;
-        string func7;
+        string opcode = "0000000";
+        string CW= "0000000000";
+        int imm = 0;
+        int DPC = 0;
+        int NPC = 0;
+        int JPC = 0;
+        string func3 = "000";
+        string func7 = "0000000";
+        int no1 = 0;
+        int no2 = 0;
+        int nod = 0;
         int regd = 0;
         int reg1 = 0;
         int reg2 =0;
@@ -748,6 +756,10 @@ class IDEX
     void setfunc3(const string & f3)
     {
         func3 = f3;
+    }
+    void setNPC(int npc)
+    {
+        NPC = npc;
     }
     void setfunc7(const string & f7)
     {
@@ -781,7 +793,11 @@ class IDEX
     {
         CW = CWgenerator[opcode];
     }
-
+    
+    int giveNPC()
+    {
+        return NPC;
+    }
     string giveopcode()
     {
         return opcode;
@@ -835,14 +851,29 @@ class IDEX
         cout<<"CW: "<<CW<<endl;
         cout<<"JPC: "<<JPC<<endl;
     }
+    void reset()
+    {
+        opcode = "0000000";
+        CW= "0000000000";
+        imm = 0;
+        DPC = 0;
+        NPC = 0;
+        JPC = 0;
+        func3 = "000";
+        func7 = "0000000";
+        regd = 0;
+        reg1 = 0;
+        reg2 =0;
+    }
 };
 class EXMO
 {
     private:
-        int ALUOPT;
-        string CW;
-        int reg2;
-        int regd;
+        int ALUOPT = 0;
+        string CW = "0000000000";
+        int reg2 = 0;
+        int exe = 0;
+        int regd = 0;
     public:
         void setALUOPT(int val)
         {
@@ -860,6 +891,10 @@ class EXMO
         {
             regd = rd;
         }
+        void setExe(int ex)
+        {
+            exe = ex;
+        }
         int giveALUOPT()
         {
             return ALUOPT;
@@ -868,13 +903,17 @@ class EXMO
         {
             return CW;
         }
-        int setReg2()
+        int giveReg2()
         {
             return reg2;
         }
-        int setRegd()
+        int giveRegd()
         {
             return regd;
+        }
+        int giveExe()
+        {
+            return exe;
         }
 };
 string ALUgenerate(string  ALUop,string  func3,string  func7)
@@ -1002,10 +1041,10 @@ int ALU(string & operation,int operand1,int operand2)
 class MOWB
 {   
     private:
-        string CW;
-        int LDOUT;
-        int ALUOUT;
-        int Regd;
+        string CW = "0000000000";
+        int LDOUT = 0;
+        int ALUOUT = 0;
+        int Regd = 0;
     public:
         void setCW(const string & cw)
         {
@@ -1044,23 +1083,26 @@ IFID ifid;
 IDEX idex;
 EXMO exmo;
 MOWB mowb;
-
+int val = 0;
 void FETCH()
 {
     string res = instrMem.load_word(PC);
     ifid.setIM(res);
     ifid.setNPC(PC+4);
     ifid.setDPC(PC);
+    PC+=4;
     cout<<"RES=>"<<res<<endl;
-    if(res=="$")
+    cout<<"PC: "<<PC<<endl;
+    if(res=="00000000000000000000000000000000")
     {
         return ;
     }
-    PC+=4;
+    
 }
 void DECODE()
 {
     string str = ifid.getinstruction();
+    cout<<"DECODESTR"<<ifid.getinstruction()<<endl;
     int n = str.size();
     string opcode = str.substr(n-7, 7); 
     string prevopcode = opcode;
@@ -1083,8 +1125,10 @@ void DECODE()
             idex.setreg1(reg1);
             idex.setreg2(reg2);
             idex.setregd(regd);
+            idex.setNPC(ifid.giveNPC());
             idex.setDPC(ifid.giveDPC());
             idex.calcCW();
+            exmo.setExe(1);
         }
         
         else if (opcode == "I")
@@ -1107,9 +1151,11 @@ void DECODE()
                 idex.setfunc7(func7);
                 idex.setreg1(reg1);  
                 idex.setregd(regd);
+                idex.setNPC(ifid.giveNPC());
                 idex.setImmediate(shamt);
                 idex.setDPC(ifid.giveDPC());
                 idex.calcCW();
+                exmo.setExe(1);
             }
             else
             {
@@ -1129,9 +1175,11 @@ void DECODE()
                 idex.setfunc3(func3);
                 idex.setreg1(reg1);
                 idex.setregd(regd);
+                idex.setNPC(ifid.giveNPC());
                 idex.setImmediate(immediate);
                 idex.setDPC(ifid.giveDPC());
                 idex.calcCW();
+                exmo.setExe(1);
             }
         }
         else if(opcode=="L")
@@ -1153,8 +1201,10 @@ void DECODE()
             idex.setImmediate(immediate);
             idex.setreg1(reg1);
             idex.setregd(regd);
+            idex.setNPC(ifid.giveNPC());
             idex.setDPC(ifid.giveDPC());
             idex.calcCW();
+            exmo.setExe(1);
         }
         else if(opcode=="S")
         {
@@ -1177,9 +1227,11 @@ void DECODE()
             idex.setfunc3(func3);
             idex.setreg1(reg1);
             idex.setregd(regd);
+            idex.setNPC(ifid.giveNPC());
             idex.setImmediate(immediate);
             idex.setDPC(ifid.giveDPC());
             idex.calcCW();
+            exmo.setExe(1);
         }
         else if(opcode=="J")
         {
@@ -1195,13 +1247,10 @@ void DECODE()
             idex.setregd(regd);
             idex.setDPC(ifid.giveDPC());
             idex.setJPC(ifid.giveNPC()+Immediate-4);
+            idex.setNPC(ifid.giveNPC());
             idex.calcCW();
+            exmo.setExe(1);
             GPR[regd]= ifid.giveNPC()+Immediate-4;
-
-            /*
-                PC+=Immediate-4;
-                GPR[regd] = PC;
-            */
         }
         else if(opcode=="JL")
         {
@@ -1220,12 +1269,10 @@ void DECODE()
             idex.setImmediate(Immediate);
             idex.setDPC(ifid.giveDPC());
             idex.setJPC(ifid.giveNPC()+Immediate+GPR[reg1]-4);
+            idex.setNPC(ifid.giveNPC());
             idex.calcCW();
+            exmo.setExe(1);
             GPR[regd] = ifid.giveNPC()+Immediate+GPR[reg1]-4;
-            /*
-                PC+=Immediate+GPR[reg1]-4;
-                GPR[regd] = PC;
-            */
         }
         else if(opcode=="B")
         {
@@ -1248,16 +1295,9 @@ void DECODE()
             idex.setreg2(reg2);
             idex.setImmediate(Immediate);
             idex.setDPC(ifid.giveDPC());
+            idex.setNPC(ifid.giveNPC());
             idex.calcCW();
-            /*
-            cout << "Imm: " << Immediate << " R1: " << reg1 << " R2: " << reg2 << " Operation: " << operation << endl;
-            ALU alu(operation,GPR[reg1],GPR[reg2]);
-            int val = alu.execute();
-            if(val==1)
-            {
-                PC+=Immediate-4;
-            }
-            */
+            exmo.setExe(1);    
         }
         else if(opcode=="U")
         {
@@ -1272,11 +1312,9 @@ void DECODE()
             idex.setregd(regd);
             idex.setImmediate(Immediate);
             idex.setDPC(ifid.giveDPC());
+            idex.setNPC(ifid.giveNPC());
             idex.calcCW();
-            /*
-                GPR[regd] = (Immediate<<12);
-                cout << "Imm: " << (Immediate<<12) << " Rd: " << regd << " Operation: " << operation << endl;             
-            */
+            exmo.setExe(1);
         }
         else if(opcode=="UI")
         {
@@ -1292,70 +1330,107 @@ void DECODE()
             idex.setregd(regd);
             idex.setImmediate(Immediate);
             idex.setDPC(ifid.giveDPC());
+            idex.setNPC(ifid.giveNPC());
             idex.calcCW();
-            /*
-                cout << "Imm: " << Immediate << " Rd: " << regd << " Operation: " << operation << endl;
-                PC+=Immediate-4;
-                GPR[regd] = PC;
-            */
+            exmo.setExe(1);
         }
         else 
         {
-            printf("INVALID OPCODE");
+            cout<<"INVALID OPCODE"<<endl;
+            idex.reset();
         }
+       
+        
 }
 void EXECUTE()
 {
     string CW = idex.giveCW();
     exmo.setCW(CW);
-    exmo.setReg2(idex.givereg2());
-    exmo.setRegd(idex.giveregd());
+    cout<<"CW"<<CW<<endl;
+    if(CW[7]=='1' &&((idex.givereg1()==exmo.giveRegd())||(idex.givereg2() == exmo.giveRegd())))
+    {
+        cout<<"--------------------STALL PIPELINE"<<endl;
+        string cw= "00000000000";
+        exmo.setCW(cw);
+        int npc = idex.giveNPC();
+        exmo.setExe(0);
+        PC = npc;
+        
+    }
+    
     int reg1val = GPR[idex.givereg1()];
     int reg2val = GPR[idex.givereg2()];
     if(CW[4]=='1')
     {
         reg2val = idex.giveImmediate();
     }
+    if((exmo.giveCW()[8]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+    {
+        reg1val = exmo.giveALUOPT();
+    }
+    else if((exmo.giveCW()[8]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+    {
+        reg2val = exmo.giveALUOPT();
+    }
+    else if((mowb.giveCW()[8]=='1')&& (mowb.giveregd())&&idex.givereg2()==mowb.giveregd())
+    {
+        reg1val = val;
+    }
+    else if((mowb.giveCW()[8]=='1')&& (mowb.giveregd())&& idex.givereg2()==mowb.giveregd())
+    {
+        reg2val = val;
+    }
+    cout<<CW.substr(0,4)<<" "<<idex.givefunc3()<<" "<<idex.givefunc7()<<endl;
+    cout<<reg1val<<" "<<reg2val<<endl;
     string ALUselect = ALUgenerate(CW.substr(0,4),idex.givefunc3(),idex.givefunc7());
     cout<<"ALUselect: "<<ALUselect<<endl;
+    exmo.setReg2(idex.givereg2());
+    exmo.setRegd(idex.giveregd());
     int ALUres = ALU(ALUselect,reg1val,reg2val);
     int DPC = idex.giveDPC();
-    int FPC = DPC;
-    if(CW[5]=='1' && ALUres==1)
+    int NPC = idex.giveNPC();
+    int FPC = NPC;
+    if(CW[6]=='1' && ALUres==1)
     {
         int BPC = DPC+idex.giveImmediate();
         FPC = BPC;
     }
-    if(CW[6]==1)
+    if(CW[5]==1)
     {
         int JPC = idex.giveJPC();
         FPC = JPC;
     }
-    PC = FPC;
-    cout<<ALUres<<endl;
+    if(exmo.giveExe()==1)
+    {
+        cout<<idex.giveNPC()<<" "<<FPC;
+        cout<<"-----------------------------HELLO-------------------------------"<<endl;
+        PC = FPC;
+    }
+    exmo.setExe(0);
+    cout<<"ALURES: "<<ALUres<<endl;
     exmo.setALUOPT(ALUres);
 }
 void MEMOP()
 {
     string CW = exmo.giveCW();
     mowb.setCW(CW);
-    mowb.setRegd(exmo.setRegd());
+    mowb.setRegd(exmo.giveRegd());
     mowb.setALUOUT(exmo.giveALUOPT());
     char MemRead = CW[7];
     char MemWrite = CW[8];
     if(MemRead=='1')
     {
         mowb.setLDOUT(mem.load(exmo.giveALUOPT()));
+        cout<<"MEMORY LOAD RES: "<<mem.load(exmo.giveALUOPT())<<endl;
     }
     else if(MemWrite=='1')
     {
-        mem.store(exmo.giveALUOPT(),GPR[exmo.setReg2()]);
+        mem.store(exmo.giveALUOPT(),GPR[exmo.giveReg2()]);
     }
 }
 void WRITEBK()
 {
     string CW = mowb.giveCW();
-    int val;
     if(CW.back()=='1')
     {
         val = mowb.giveLDOUT();
@@ -1370,6 +1445,36 @@ void WRITEBK()
     }
 }
 
+class CPU
+{
+    public:
+    void run()
+    {
+        while(1)
+        {
+            if(PC>(instrMem.instsize()+6)*4)
+            {
+                break;
+            }
+            //cout<<"PC: "<<PC<<endl;
+            WRITEBK();
+            cout<<"WRITE:"<<PC<<endl;
+            MEMOP();
+            cout<<"MEM:"<<PC<<endl;
+            EXECUTE();
+            cout<<"EXECUTE:"<<PC<<endl;
+            DECODE();
+            idex.print_content();  
+            cout<<"DECODE:"<<PC<<endl;
+            FETCH();
+            cout<<"FETCH: "<<PC<<endl;
+            ifid.print_content();
+            sleep(2);
+        }
+    }
+};
+
+
 //--------------------------------------main---------------------------------
 int main()
 {
@@ -1382,8 +1487,10 @@ int main()
         ADDI x1, x1, -1; |SUB x3, x1, x2;|                |SLT x3, x2, x1;|LB x2, 10[x0];
         JAL x0, -8;      |                                                |ADDI x2, x2, 0;              
     */
+    mem.store(100,99);
     string str = R"(
                 ADDI x1, x1, 100;
+                ADDI x2, x1, 0;
         )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
@@ -1407,16 +1514,9 @@ int main()
     }
     printf("********************************************************** \n");
     FinalStr.parse();    
-    printf("INSTRUCTION MEMORY\n");
-    instrMem.print_memory();
-    FETCH();
-    DECODE();
-    ifid.print_content();
-    idex.print_content();   
-    EXECUTE();
-    MEMOP();
-    WRITEBK();
-    
+    CPU cpu;
+    cpu.run();
+    cout<<GPR[1]<<endl;
+    cout<<GPR[2]<<endl;
     return 0;
 }
-
