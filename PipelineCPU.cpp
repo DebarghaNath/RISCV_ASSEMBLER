@@ -793,6 +793,10 @@ class IDEX
     {
         CW = CWgenerator[opcode];
     }
+    void setCW(const string & cw)
+    {
+        CW = cw;
+    }
     
     int giveNPC()
     {
@@ -1242,6 +1246,7 @@ void DECODE()
             int regd = stoi(rd, 0, 2);
             int Immediate = sign_extend(imm,20);
            //----decode----
+            cout<<"-------------------------------------Operation[opcode]"<<endl;
             idex.setopcode(prevopcode);
             idex.setImmediate(Immediate);
             idex.setregd(regd);
@@ -1251,6 +1256,17 @@ void DECODE()
             idex.calcCW();
             exmo.setExe(1);
             GPR[regd]= ifid.giveNPC()+Immediate-4;
+            //--------------------------Jump handling---------------------
+            cout<<"ID JUMP HANDLING"<<endl;
+            cout<<idex.giveCW()[5]<<endl;
+            if(idex.giveCW()[5]=='1')
+            {
+                int JPC = idex.giveJPC();
+                PC = JPC;
+                idex.setCW("0000000000");
+                exmo.setExe(0);
+                cout<<"JUMP------------TAKEN"<<JPC<<endl;
+            }
         }
         else if(opcode=="JL")
         {
@@ -1298,6 +1314,69 @@ void DECODE()
             idex.setNPC(ifid.giveNPC());
             idex.calcCW();
             exmo.setExe(1);    
+            //---------------Branch handling-------------------
+            int reg1val = GPR[idex.givereg1()];
+            int reg2val = GPR[idex.givereg2()]; 
+            cout<<"VALUATION: "<<exmo.giveRegd()<<endl;
+            cout<<"VALUATION: "<<mowb.giveregd()<<endl;
+            cout<<"VALUE OF R1: "<<idex.givereg1()<<endl;
+            cout<<"VALUE OF R2: "<<idex.givereg2()<<endl;
+            cout<<exmo.giveCW()[9]<<endl;
+            cout<<mowb.giveCW()[9]<<endl;
+            if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+            {   
+                reg1val = exmo.giveALUOPT();
+            }
+            else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+            {
+                reg2val = exmo.giveALUOPT();
+            }
+            else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
+            {
+                if(mowb.giveCW().back()=='1')
+                {
+                    reg1val = mowb.giveLDOUT();
+                }
+                else
+                {
+                    reg1val = mowb.giveALUOUT();
+                }
+                cout<<"------------------------"<<endl;
+                cout<<reg1val<<endl;
+            }
+            else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
+            {
+                if(mowb.giveCW().back()=='1')
+                {
+                    reg2val = mowb.giveLDOUT();
+                }
+                else
+                {
+                    reg2val = mowb.giveALUOUT();
+                }
+            }
+            cout<<"ID BARNCH HANDLING"<<endl;
+            cout<<idex.givereg1()<<": "<<reg1val<<" "<<idex.givereg2()<<": "<<reg2val<<endl;
+            string ALUselect = ALUgenerate(idex.giveCW().substr(0,4),idex.givefunc3(),idex.givefunc7());
+            //cout<<"ALUselect: "<<ALUselect<<endl;
+            int ALUres = ALU(ALUselect,reg1val,reg2val);
+            int DPC = idex.giveDPC();
+            int NPC = idex.giveNPC();
+            int FPC = NPC;
+            if(idex.giveCW()[6]=='1' && ALUres==1)
+            {  
+                int BPC = DPC+idex.giveImmediate();
+                cout<<"BRANCH-------------TAKEN"<<endl;
+                idex.setCW("0000000000");
+                PC = BPC;
+                exmo.setExe(0);
+            }
+            else
+            {
+                PC = NPC;
+            }
+            idex.setCW("0000000000");
+            exmo.setExe(0);
         }
         else if(opcode=="U")
         {
@@ -1364,24 +1443,33 @@ void EXECUTE()
     {
         reg2val = idex.giveImmediate();
     }
-    if((exmo.giveCW()[8]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+    if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
     {
         reg1val = exmo.giveALUOPT();
     }
-    else if((exmo.giveCW()[8]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+    else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
     {
         reg2val = exmo.giveALUOPT();
     }
-    else if((mowb.giveCW()[8]=='1')&& (mowb.giveregd())&&idex.givereg2()==mowb.giveregd())
+    else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
     {
+        cout<<"val--------------------"<<val<<endl;
         reg1val = val;
     }
-    else if((mowb.giveCW()[8]=='1')&& (mowb.giveregd())&& idex.givereg2()==mowb.giveregd())
+    else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
     {
         reg2val = val;
     }
     cout<<CW.substr(0,4)<<" "<<idex.givefunc3()<<" "<<idex.givefunc7()<<endl;
     cout<<reg1val<<" "<<reg2val<<endl;
+    int DPC = idex.giveDPC();
+    int NPC = idex.giveNPC();
+    int FPC = NPC;
+    string ALUselect = ALUgenerate(CW.substr(0,4),idex.givefunc3(),idex.givefunc7());
+    exmo.setReg2(idex.givereg2());
+    exmo.setRegd(idex.giveregd());
+    int ALUres = ALU(ALUselect,reg1val,reg2val);
+    /*
     string ALUselect = ALUgenerate(CW.substr(0,4),idex.givefunc3(),idex.givefunc7());
     cout<<"ALUselect: "<<ALUselect<<endl;
     exmo.setReg2(idex.givereg2());
@@ -1392,22 +1480,20 @@ void EXECUTE()
     int FPC = NPC;
     if(CW[6]=='1' && ALUres==1)
     {
+
         int BPC = DPC+idex.giveImmediate();
+        cout<<"BRANCH-------------"<<BPC<<endl;
         FPC = BPC;
-    }
-    if(CW[5]==1)
-    {
-        int JPC = idex.giveJPC();
-        FPC = JPC;
-    }
+    }*/
+    
     if(exmo.giveExe()==1)
     {
         cout<<idex.giveNPC()<<" "<<FPC;
         cout<<"-----------------------------HELLO-------------------------------"<<endl;
-        PC = FPC;
+        PC = FPC+4;
     }
     exmo.setExe(0);
-    cout<<"ALURES: "<<ALUres<<endl;
+    cout<<"------ALURES: "<<ALUres<<endl;
     exmo.setALUOPT(ALUres);
 }
 void MEMOP()
@@ -1441,6 +1527,7 @@ void WRITEBK()
     }
     if(CW[9]=='1')
     {
+        cout<<"FINAL--------------------------------"<<mowb.giveregd()<<" "<<val<<endl;
         GPR[mowb.giveregd()] = val;
     }
 }
@@ -1487,10 +1574,14 @@ int main()
         ADDI x1, x1, -1; |SUB x3, x1, x2;|                |SLT x3, x2, x1;|LB x2, 10[x0];
         JAL x0, -8;      |                                                |ADDI x2, x2, 0;              
     */
-    mem.store(100,99);
+    mem.store(100,100);
+    
     string str = R"(
-                ADDI x1, x1, 100;
-                ADDI x2, x1, 0;
+                ADDI x2, x2, 3;
+                BEQ x2, x0, 100;
+                ADD x1, x1, x2;
+                ADDI x2, x2, -1;
+                JAL x4, -12;
         )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
