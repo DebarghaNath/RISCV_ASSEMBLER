@@ -413,6 +413,7 @@ public:
         if (index < 0 || index >= memory.size()) 
         {
             return "00000000000000000000000000000000";
+                    
         }
         return memory[index]; 
     }
@@ -1088,6 +1089,7 @@ IDEX idex;
 EXMO exmo;
 MOWB mowb;
 int val = 0;
+int prevB = 0;
 void FETCH()
 {
     string res = instrMem.load_word(PC);
@@ -1122,6 +1124,10 @@ void DECODE()
             int reg1 = stoi(r1, 0, 2);
             int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
+            string imm = "0";
+            int immediate = sign_extend(imm, 12);  
+            
+
             //---decode--
             idex.setopcode(prevopcode);
             idex.setfunc7(str.substr(0, 7));
@@ -1130,6 +1136,7 @@ void DECODE()
             idex.setreg2(reg2);
             idex.setregd(regd);
             idex.setNPC(ifid.giveNPC());
+            idex.setImmediate(immediate);
             idex.setDPC(ifid.giveDPC());
             idex.calcCW();
             exmo.setExe(1);
@@ -1139,6 +1146,7 @@ void DECODE()
         {
             string func3, r1, rd, imm, func7;
             func7 = str.substr(0, 7);
+            string r2 = "00000";
             if (func7 == "0000000" && (str.substr(n-15, 3) == "001"||str.substr(n-15,3)=="010"||str.substr(n-15,3)=="011"||str.substr(n-15,3)=="101"))
             {   func3 = str.substr(n - 15, 3);
                 string operation = opcode + func3+func7;
@@ -1149,12 +1157,14 @@ void DECODE()
                 int shamt = stoi(imm, 0, 2);     
                 int reg1 = stoi(r1, 0, 2);   
                 int regd = stoi(rd, 0, 2);
+                int reg2 = stoi(r2, 0, 2);
                 //---decode---  
                 idex.setopcode(prevopcode);
                 idex.setfunc3(func3);
                 idex.setfunc7(func7);
                 idex.setreg1(reg1);  
                 idex.setregd(regd);
+                idex.setreg2(reg2);
                 idex.setNPC(ifid.giveNPC());
                 idex.setImmediate(shamt);
                 idex.setDPC(ifid.giveDPC());
@@ -1168,16 +1178,21 @@ void DECODE()
                 string operation = opcode + func3;
                 //operation = Operation[operation];
                 r1 = str.substr(n - 20, 5);
+                string r2 = "00000";
+                string func7 = "0000000";
                 imm = str.substr(0, 12);  
                 rd = str.substr(n - 12, 5);
                 operation.pop_back();
                 int immediate = sign_extend(imm, 12);  
                 int reg1 = stoi(r1, 0, 2);
+                int reg2 = stoi(r2, 0, 2);
                 int regd = stoi(rd, 0, 2);
                 //---decode---
                 idex.setopcode(prevopcode);
                 idex.setfunc3(func3);
+                idex.setfunc7(func7);
                 idex.setreg1(reg1);
+                idex.setreg2(reg2);
                 idex.setregd(regd);
                 idex.setNPC(ifid.giveNPC());
                 idex.setImmediate(immediate);
@@ -1193,17 +1208,22 @@ void DECODE()
             string operation = opcode + func3;
             //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
+            string r2 = "0";
+            string func7 = "0000000";
             imm = str.substr(0, 12);  
             rd = str.substr(n - 12, 5);
             //operation.pop_back();
             int immediate = sign_extend(imm, 12);  
             int reg1 = stoi(r1, 0, 2);
+            int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
             //----decode----
             idex.setopcode(prevopcode);
             idex.setfunc3(func3);
+            idex.setfunc7(func7);
             idex.setImmediate(immediate);
             idex.setreg1(reg1);
+            idex.setreg2(reg2);
             idex.setregd(regd);
             idex.setNPC(ifid.giveNPC());
             idex.setDPC(ifid.giveDPC());
@@ -1218,18 +1238,23 @@ void DECODE()
             //cout<<operation<<endl;
             //operation = Operation[operation];
             r1 = str.substr(n - 20, 5);
+            string r2 = "0";
             imm7 = str.substr(0, 7);  
             imm5 = str.substr(n-12,5);
             rd = str.substr(n - 25, 5);
+            string func7 = "0000000";
             imm = imm7+imm5;
             //operation.pop_back();
             int immediate = sign_extend(imm, 12);  
             int reg1 = stoi(r1, 0, 2);
+            int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
             //-----decode-----
             idex.setopcode(prevopcode);
             idex.setfunc3(func3);
+            idex.setfunc7(func7);
             idex.setreg1(reg1);
+            idex.setreg2(reg2);
             idex.setregd(regd);
             idex.setNPC(ifid.giveNPC());
             idex.setImmediate(immediate);
@@ -1241,14 +1266,24 @@ void DECODE()
         {
             string rd, imm;
             //string operation = Operation[opcode];
+            string r1 = "0";
+            string r2 = "0";
+            string func7 = "0000000";
+            string func3 = "000";
             rd = str.substr(n - 12, 5);
             imm = str.substr(0,20);
+            int reg1 = stoi(r1, 0, 2);
+            int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
             int Immediate = sign_extend(imm,20);
            //----decode----
             cout<<"-------------------------------------Operation[opcode]"<<endl;
             idex.setopcode(prevopcode);
+            idex.setfunc3(func3);
+            idex.setfunc7(func7);
             idex.setImmediate(Immediate);
+            idex.setreg1(reg1);
+            idex.setreg2(reg2);
             idex.setregd(regd);
             idex.setDPC(ifid.giveDPC());
             idex.setJPC(ifid.giveNPC()+Immediate-4);
@@ -1292,7 +1327,9 @@ void DECODE()
         }
         else if(opcode=="B")
         {
+            cout<<"STR"<<str<<endl;
             string func3,r1,r2,imm5,imm7,imm;
+            string func7 = "0000000";
             func3 = str.substr(n - 15, 3);
             string operation = opcode + func3;
             //operation = Operation[operation];
@@ -1306,6 +1343,7 @@ void DECODE()
             int Immediate = sign_extend(imm,12);
             //----decode----
             idex.setopcode(prevopcode);
+            idex.setfunc7(func7);
             idex.setfunc3(func3);
             idex.setreg1(reg1);
             idex.setreg2(reg2);
@@ -1356,10 +1394,11 @@ void DECODE()
                 }
             }
             cout<<"ID BARNCH HANDLING"<<endl;
-            cout<<idex.givereg1()<<": "<<reg1val<<" "<<idex.givereg2()<<": "<<reg2val<<endl;
+            cout<<idex.givereg1()<<": "<<reg1val<<" "<<idex.givereg2()<<": "<<reg2val<<" CW: "<<idex.giveCW().substr(0,4)+idex.givefunc3()+idex.givefunc7()<<endl;
             string ALUselect = ALUgenerate(idex.giveCW().substr(0,4),idex.givefunc3(),idex.givefunc7());
-            //cout<<"ALUselect: "<<ALUselect<<endl;
+            cout<<"ALUselect: "<<ALUselect<<endl;
             int ALUres = ALU(ALUselect,reg1val,reg2val);
+            cout<<"ALURES: "<<ALUres<<endl;
             int DPC = idex.giveDPC();
             int NPC = idex.giveNPC();
             int FPC = NPC;
@@ -1377,6 +1416,7 @@ void DECODE()
             }
             idex.setCW("0000000000");
             exmo.setExe(0);
+            prevB = 1;
         }
         else if(opcode=="U")
         {
@@ -1433,7 +1473,7 @@ void EXECUTE()
         exmo.setCW(cw);
         int npc = idex.giveNPC();
         exmo.setExe(0);
-        PC = npc;
+        PC = npc+4;
         
     }
     
@@ -1443,23 +1483,49 @@ void EXECUTE()
     {
         reg2val = idex.giveImmediate();
     }
-    if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+    cout<<"MOWB: "<<mowb.giveCW()<<" "<<"EXMO: "<<exmo.giveCW()<<endl;
+    cout<<idex.givereg1()<<" "<<idex.givereg2()<<endl;
+    cout<<exmo.giveRegd()<<" "<<mowb.giveregd()<<endl;
+    cout<<exmo.giveALUOPT()<<endl;
+    cout<<"prevB: "<<prevB<<endl;
+    if(!prevB)
     {
-        reg1val = exmo.giveALUOPT();
+        if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+        {
+            reg1val = exmo.giveALUOPT();
+        }
+        else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+        {
+            reg2val = exmo.giveALUOPT();
+        }
+        else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
+        {
+            cout<<"val--------------------"<<val<<endl;
+            reg1val = val;
+        }
+        else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
+        {
+            cout<<"val--------------------"<<val<<endl;
+            cout<<GPR[idex.givereg2()]<<endl;
+            reg2val = val;
+        }
     }
-    else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+    else
     {
-        reg2val = exmo.giveALUOPT();
+        
+        if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
+        {
+            cout<<"val--------------------"<<val<<endl;
+            reg1val = val;
+        }
+        else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
+        {
+            cout<<"val--------------------"<<val<<endl;
+            cout<<GPR[idex.givereg2()]<<endl;
+            reg2val = val;
+        }
     }
-    else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
-    {
-        cout<<"val--------------------"<<val<<endl;
-        reg1val = val;
-    }
-    else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
-    {
-        reg2val = val;
-    }
+    
     cout<<CW.substr(0,4)<<" "<<idex.givefunc3()<<" "<<idex.givefunc7()<<endl;
     cout<<reg1val<<" "<<reg2val<<endl;
     int DPC = idex.giveDPC();
@@ -1469,23 +1535,8 @@ void EXECUTE()
     exmo.setReg2(idex.givereg2());
     exmo.setRegd(idex.giveregd());
     int ALUres = ALU(ALUselect,reg1val,reg2val);
-    /*
-    string ALUselect = ALUgenerate(CW.substr(0,4),idex.givefunc3(),idex.givefunc7());
-    cout<<"ALUselect: "<<ALUselect<<endl;
-    exmo.setReg2(idex.givereg2());
-    exmo.setRegd(idex.giveregd());
-    int ALUres = ALU(ALUselect,reg1val,reg2val);
-    int DPC = idex.giveDPC();
-    int NPC = idex.giveNPC();
-    int FPC = NPC;
-    if(CW[6]=='1' && ALUres==1)
-    {
-
-        int BPC = DPC+idex.giveImmediate();
-        cout<<"BRANCH-------------"<<BPC<<endl;
-        FPC = BPC;
-    }*/
-    
+    cout<<"ALUSelect: "<<ALUselect<<" "<<"REG1: "<<idex.givereg1()<<" "<<"REG1VAL: "<<reg1val<<" "<<"REG2: "<<idex.givereg2()<<" "<<"REG2VAL: "<<reg2val<<endl;
+   
     if(exmo.giveExe()==1)
     {
         cout<<idex.giveNPC()<<" "<<FPC;
@@ -1573,14 +1624,20 @@ int main()
         BEQ x1, x0, 12;  |ADDI x2, x0, 5;|SRLI x1, x1, 1; |ADDI x2, x0, 4;|SB x1, 10[x0];
         ADDI x1, x1, -1; |SUB x3, x1, x2;|                |SLT x3, x2, x1;|LB x2, 10[x0];
         JAL x0, -8;      |                                                |ADDI x2, x2, 0;              
+        ADDI x2, x2, 3;
+        BEQ x2, x0, 100;
+        ADD x1, x1, x2;
+        ADDI x2, x2, -1;
+        JAL x4, -12;
     */
     mem.store(100,100);
     
     string str = R"(
-                ADDI x2, x2, 3;
-                BEQ x2, x0, 100;
-                ADD x1, x1, x2;
-                ADDI x2, x2, -1;
+                ADDI x1, x1, 5;
+                ADDI x2, x2, 1;
+                BEQ x1, x0, 100;
+                MUL x2, x1, x2;
+                ADDI x1, x1, -1;
                 JAL x4, -12;
         )";
     StringParser FinalStr(str);
