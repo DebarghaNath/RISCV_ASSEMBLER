@@ -466,139 +466,7 @@ public:
 
 Memory mem(1024);
 //---------------------------------------------------------ALU------------------------------------------------------
-class ALU
-{
-    private:
-        string operation;
-        int operand1;
-        int operand2;
 
-    public: 
-        ALU(const string &op, const int &op1, const int &op2)
-        {   
-            operation = op;
-            operand1 = op1;
-            operand2 = op2;
-        }
-        int execute()
-        {
-            if (operation == "ADD")
-            {
-                return operand1 + operand2;
-            }
-            else if (operation == "SUB")
-            {
-                return operand1 - operand2;
-            }
-            else if (operation == "AND")
-            {
-                return operand1 & operand2;
-            }
-            else if (operation == "MUL")
-            {
-                return operand1 * operand2;
-            }
-            else if (operation == "XOR")
-            {
-                return operand1 ^ operand2;
-            }
-            else if (operation == "OR")
-            {
-                return operand1 | operand2;
-            }
-            else if (operation == "SLL")
-            {
-                return operand1 << operand2;
-            }
-            else if (operation == "SRL")
-            {
-                return (unsigned int)operand1 >> operand2;
-            }
-            else if (operation == "SRA")
-            {
-                return operand1 >> operand2;
-            }
-            else if (operation == "SLT")
-            {
-                return operand1 < operand2 ? 1 : 0;
-            }
-            else if (operation == "SLTU")
-            {
-                return (unsigned int)operand1 < (unsigned int)operand2 ? 1 : 0;
-            }
-            else if (operation == "BEQ")
-            {
-                if(operand1==operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else if (operation == "BNE")
-            {
-                if(operand1!=operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else if (operation == "BLT")
-            {
-                if(operand1<operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else if (operation == "BGE")
-            {
-                if(operand1>=operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else if (operation == "BLE")
-            {
-                if(operand1<=operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else if (operation == "BGT")
-            {
-                if(operand1>operand2)
-                {
-                    return 1;
-                }
-                else
-                {
-                    return 0;
-                }
-            }
-            else
-            {
-                cout << "Unknown operation: " << operation << endl;
-                return 0;
-            }
-        }
-};
 //-----------------------------------------------------------NEGATIVE NUMBERS-------------------------------------------------------------
 int sign_extend(const string &binary, int bits)
 {
@@ -1090,6 +958,9 @@ EXMO exmo;
 MOWB mowb;
 int val = 0;
 int prevB = 0;
+int stall = 0;
+int prevstall = 0;
+int lD = 0;
 void FETCH()
 {
     string res = instrMem.load_word(PC);
@@ -1112,6 +983,7 @@ void DECODE()
     int n = str.size();
     string opcode = str.substr(n-7, 7); 
     string prevopcode = opcode;
+    lD--;
     opcode = OpcodeToType[opcode];
         if (opcode == "R")
         {
@@ -1217,6 +1089,8 @@ void DECODE()
             int reg1 = stoi(r1, 0, 2);
             int reg2 = stoi(r2, 0, 2);
             int regd = stoi(rd, 0, 2);
+            lD = 2;
+            cout<<"------------------------------LD----------------------------------"<<endl;
             //----decode----
             idex.setopcode(prevopcode);
             idex.setfunc3(func3);
@@ -1359,17 +1233,32 @@ void DECODE()
             cout<<"VALUATION: "<<mowb.giveregd()<<endl;
             cout<<"VALUE OF R1: "<<idex.givereg1()<<endl;
             cout<<"VALUE OF R2: "<<idex.givereg2()<<endl;
+            cout<<"lD: "<<lD<<endl;
             cout<<exmo.giveCW()[9]<<endl;
             cout<<mowb.giveCW()[9]<<endl;
             if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
             {   
-                reg1val = exmo.giveALUOPT();
+                if(lD!=1)
+                {
+                    reg1val = exmo.giveALUOPT();
+                }
+                else
+                {
+                    reg1val = mem.load(exmo.giveALUOPT());
+                }
             }
             else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
             {
-                reg2val = exmo.giveALUOPT();
+                if(lD!=1)
+                {
+                    reg2val = exmo.giveALUOPT();
+                }
+                else
+                {
+                    reg2val = mem.load(exmo.giveALUOPT());
+                }
             }
-            else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
+            if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
             {
                 if(mowb.giveCW().back()=='1')
                 {
@@ -1463,18 +1352,22 @@ void DECODE()
 }
 void EXECUTE()
 {
+     if(lD==1)lD = 0;
     string CW = idex.giveCW();
     exmo.setCW(CW);
     cout<<"CW"<<CW<<endl;
-    if(CW[7]=='1' &&((idex.givereg1()==exmo.giveRegd())||(idex.givereg2() == exmo.giveRegd())))
+    cout<<"IDEX"<<idex.givereg1()<<" "<<idex.givereg2()<<endl;
+    if(mowb.giveCW()[7]=='1' &&(idex.givereg1()!=0 && idex.givereg2()!= 0 )&&((idex.givereg1()==exmo.giveRegd())||(idex.givereg2() == exmo.giveRegd())))
     {
         cout<<"--------------------STALL PIPELINE"<<endl;
         string cw= "00000000000";
         exmo.setCW(cw);
         int npc = idex.giveNPC();
         exmo.setExe(0);
-        PC = npc+4;
-        
+        PC = npc;
+        stall = 1;
+        prevstall = 1;
+        return;
     }
     
     int reg1val = GPR[idex.givereg1()];
@@ -1484,30 +1377,40 @@ void EXECUTE()
         reg2val = idex.giveImmediate();
     }
     cout<<"MOWB: "<<mowb.giveCW()<<" "<<"EXMO: "<<exmo.giveCW()<<endl;
-    cout<<idex.givereg1()<<" "<<idex.givereg2()<<endl;
+    cout<<idex.givereg1()<<" val: "<<GPR[idex.givereg1()]<<" "<<idex.givereg2()<<" val: "<<GPR[idex.givereg2()]<<endl;
     cout<<exmo.giveRegd()<<" "<<mowb.giveregd()<<endl;
     cout<<exmo.giveALUOPT()<<endl;
     cout<<"prevB: "<<prevB<<endl;
     if(!prevB)
     {
-        if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+        if(prevstall)
         {
-            reg1val = exmo.giveALUOPT();
+            prevstall = 0;
+            
         }
-        else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+        else
         {
-            reg2val = exmo.giveALUOPT();
-        }
-        else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
-        {
-            cout<<"val--------------------"<<val<<endl;
-            reg1val = val;
-        }
-        else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
-        {
-            cout<<"val--------------------"<<val<<endl;
-            cout<<GPR[idex.givereg2()]<<endl;
-            reg2val = val;
+            if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg1()==exmo.giveRegd())
+            {
+                cout<<"HERE"<<endl;
+                reg1val = exmo.giveALUOPT();
+            }
+            else if((exmo.giveCW()[9]=='1') && (exmo.giveRegd()!=0) && idex.givereg2()==exmo.giveRegd())
+            {
+                cout<<"HELLO"<<endl;
+                reg2val = exmo.giveALUOPT();
+            }
+            else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&&idex.givereg1()==mowb.giveregd())
+            {
+                cout<<"val--------------------"<<val<<endl;
+                reg1val = val;
+            }
+            else if((mowb.giveCW()[9]=='1')&& (mowb.giveregd()!=0)&& idex.givereg2()==mowb.giveregd())
+            {
+                cout<<"val--------------------"<<val<<endl;
+                cout<<GPR[idex.givereg2()]<<endl;
+                reg2val = val;
+            }
         }
     }
     else
@@ -1550,6 +1453,7 @@ void EXECUTE()
 void MEMOP()
 {
     string CW = exmo.giveCW();
+    cout<<"-----------------------------------------------------moWB CW: "<<CW<<endl;
     mowb.setCW(CW);
     mowb.setRegd(exmo.giveRegd());
     mowb.setALUOUT(exmo.giveALUOPT());
@@ -1601,13 +1505,21 @@ class CPU
             cout<<"MEM:"<<PC<<endl;
             EXECUTE();
             cout<<"EXECUTE:"<<PC<<endl;
-            DECODE();
-            idex.print_content();  
-            cout<<"DECODE:"<<PC<<endl;
-            FETCH();
-            cout<<"FETCH: "<<PC<<endl;
-            ifid.print_content();
-            sleep(2);
+            if(stall !=1)
+            {
+                DECODE();
+                idex.print_content();  
+                cout<<"DECODE:"<<PC<<endl;
+                FETCH();
+                cout<<"FETCH: "<<PC<<endl;
+                ifid.print_content();
+            }
+            else
+            {
+                stall = 0;
+            }
+                sleep(2);
+
         }
     }
 };
@@ -1630,15 +1542,15 @@ int main()
         ADDI x2, x2, -1;
         JAL x4, -12;
     */
-    mem.store(100,100);
+    mem.store(100,1);
+    mem.store(101,200);
     
     string str = R"(
-                ADDI x1, x1, 5;
-                ADDI x2, x2, 1;
-                BEQ x1, x0, 100;
-                MUL x2, x1, x2;
-                ADDI x1, x1, -1;
-                JAL x4, -12;
+               ADDI x2, x2, 3;
+        BEQ x2, x0, 100;
+        ADD x1, x1, x2;
+        ADDI x2, x2, -1;
+        JAL x4, -12;
         )";
     StringParser FinalStr(str);
     printf("********************************************************** \n");
